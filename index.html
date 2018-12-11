@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>project1210</title>
+    <script src='./lib/vue.js'></script>
+    <link rel="stylesheet" type="text/css" href="./common.css"/>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.bootcss.com/qs/6.5.2/qs.min.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <img id="myImg" src="./asset/背景图.jpg" />
+      <div>
+        <img class="mobile" src="./asset/中国移动.png" />
+        <img class="mobile" src="./asset/中国联通.png" />
+        <img class="mobile" src="./asset/中国电信.png" />
+      </div>
+      <br style="clear: both;">
+      <div class="text-area">
+        <p class="text-wo">和沃翼起</p>
+        <p class="text-wo">物联网数据管控系统</p>
+      </div>
+      <div class="right-div">
+        <div id="login-div">
+
+          <div class="row">
+            <p>用户登录</p>
+          </div>
+
+          <div class="row">
+            <input class="input1" v-model="username" placeholder="| 用户名">
+          </div>
+
+          <div class="row">
+            <input class="input2" v-model="password" type="password" placeholder="| 密码">
+          </div>
+
+          <div class="row">
+            <div class="v_img">
+              <input v-model="code" class="verify" type="text" placeholder="| 验证码">
+              <div @click="getVer()" class="img_4">
+                <img :src="img_src" class='img-ver1' />
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="v_img">
+              <div class="check" @click="r_psw()">
+                <input type="checkbox" :checked="rmb_psw" style="background-color: white;">
+                <label for="password">记住密码</label>
+              </div>
+              <div class="check" @click="auto_login()">
+                <input type="checkbox" :checked='auto_loginFlag' value="auto-login">
+                <label for="auto-login">自动登录</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <input type="button" @click="login()" class="login_button" value="登录">
+            <!-- <img src= "./asset/登录按钮.png" style="height:100%"/> 
+                  <span style="font-size:0.8rem; position: absolute; align-self: center">登录</span> -->
+          </div>
+        </div>
+
+        <div class="bottom">
+          <img src="./asset/LOGO.png" style="height:100%;width:90%">
+        </div>
+      </div>
+    </div>
+    <script>
+      new Vue({
+        el: '#app',
+        data () {
+          return {
+            username: '',
+            password: '',
+            img_code:[],  // 接收一组验证码图片的图片链接
+            receiver_code: [], // 接受服务器返回的验证码数据
+            code:'',    // 绑定验证码输入框的值 
+            count:0,
+            ver_flag: true,
+            login_flag: false, // 用来点击登录后跳转页面
+            ver_code:[], //获取图片上的验证码
+            img_src:'http://dummyimage.com/110px*35px/f279c2&text=click', // 验证码图片链接
+            login_res: {},  // 登录后接收服务器返回的数据,
+            rmb_psw: false,
+            auto_loginFlag: false
+          }
+        },
+        beforeMount(){
+          this.count= Math.round( Math.random()*50);
+          this.getVer(); //首次进入登录界面先获取验证码图片 
+        },
+        mounted(){
+          if(localStorage.getItem('isRmb') == 'true') { 
+            this.rmb_psw = localStorage.getItem('isRmb');
+            this.password = localStorage.getItem('password');
+            this.username = localStorage.getItem('username');
+          } 
+          var that = this;
+          if(localStorage.getItem('isAuto') == 'true') {
+            axios.post("http://localhost:3000/api/login",Qs.stringify({
+              username: localStorage.getItem('username'),
+              password: this.password
+            })).then(function(response){
+                console.log(response.data);
+                that.login_res = that.clone(response.data); // 深复制方法，把数据存到本地data
+                that.login_flag = true; 
+                that.nextPage();
+              },function(err){
+                  console.log(err) 
+          }) 
+          this.count= Math.ceil(Math.random()*50);
+          this.img_src = this.img_code[this.count-1]; 
+          this.code ='';  
+          }
+        },
+        methods: { 
+          getVer(){ 
+            let that = this;  
+            this.count = Math.ceil( Math.random()*50);
+            if(this.ver_flag==true){
+              this.img_code=[]; 
+              this.ver_flag = false;
+              this.ver_code = [];
+              axios.get("http://localhost:3000/api/get-ver").then(function(response){  
+                if(response.data.status !== 1){
+                  return false;
+                }
+                console.log(response.data);
+                that.receiver_code = response.data.data; 
+                }, function(err){
+                  console.log(err);
+                }).then( function () {
+                  for(let i=0; i<that.receiver_code.length;i++){
+                    that.img_code.push(that.receiver_code[i].imag_code.replace('#',''));
+                    that.ver_code.push(that.receiver_code[i].imag_code.substring(that.receiver_code[i].imag_code.length-4));
+                  } 
+                that.receiver_code = [];
+                that.img_src = that.img_code[that.count++];   
+              });              
+              this.receiver_code = [];
+            }
+            this.img_src = this.img_code[this.count++];    
+          },     
+
+          login(){ //post 帐户密码登录
+            var that =this;
+
+            // 检查验证码是否输入正确
+            this.code = this.code.toUpperCase();
+            // console.log(this.code);
+            if((this.ver_code[this.count-1]) !== this.code){
+              if(this.code === ''){
+                alert("验证码为空，请输入验证码")
+                return false;
+              } else {
+              alert("验证码输入错误"); 
+              this.code = '';
+              return false;
+              }
+            }
+
+            // 检查帐户不能全是数字
+            var reg = new RegExp("^(?!\d+$)[\da-zA-Z]+$");
+            if(!reg.test(this.username)){
+              alert("用户名不能全是数字或者为空");
+              return false; 
+            };
+
+            if(this.password =='') {
+              alert('密码不能为空');
+              return false;
+            }
+
+          // Post 发送登录数据 
+            axios.post("http://localhost:3000/api/login",Qs.stringify({
+              username: this.username,
+              password: this.password
+            })).then(function(response){
+                console.log(response.data);
+                that.login_res = that.clone(response.data); // 深复制方法，把数据存到本地data 
+                that.login_flag = true; 
+                that.nextPage();
+              },function(err){
+                  console.log(err) 
+                }) 
+              this.count= Math.ceil(Math.random()*50);
+              this.img_src = this.img_code[this.count-1]; 
+              this.code ='';  
+              if(localStorage.getItem('isRmb') == 'true') {
+                localStorage.setItem('password', this.password);
+            }
+          },
+          clone(obj){ //深复制的方法
+            if(obj === null) 
+            return null 
+            if(typeof obj !== 'object') 
+            return obj; 
+            if(obj.constructor===Date) 
+            return new Date(obj); 
+            if(obj.constructor === RegExp) 
+            return new RegExp(obj); 
+            var newObj = new obj.constructor (); //保持继承链 
+            for (var key in obj) { 
+              if (obj.hasOwnProperty(key)) { //不遍历其原型链上的属性 
+                var val = obj[key]; 
+                newObj[key] = typeof val === 'object' ? arguments.callee(val) : val; // 使用arguments.callee解除与函数名的耦合 
+                } 
+              } 
+            return newObj;             
+          }, 
+          nextPage(){ // 登录后跳转页面
+            if(this.login_flag){
+              if(this.login_res.status === 1){
+                if(localStorage.auto_loginFlag == '1'){
+                  localStorage.setItem('auto_loginFlag', true);
+                }
+                var jsonString = JSON.stringify(this.login_res);
+                document.write(`<h1>登录成功的页面</h1> <p>服务器返回的数据:</p><div>${ jsonString }</div><br><a onclick ="localStorage.setItem('isAuto', false)" href ='./index.html'>退出自动登录</a>`);  
+              }
+              if(this.login_res.status === 0){ 
+                localStorage.setItem('isAuto', false); 
+                var reg = new RegExp("^\"");
+              //  if(!reg.test(this.username)){
+              //    console.log("不能全是数字");
+              //    return false; 
+              //  };
+                var jsonString2 = JSON.stringify(this.login_res.text); 
+                var jsonString3 = jsonString2.replace('"','');
+                document.write(`<h1>登录失败的页面</h1> ${ jsonString2 }`);
+              }
+            }  
+          },
+          r_psw(){ // 记住密码的方法
+            this.rmb_psw = !this.rmb_psw;
+            localStorage.setItem('password', this.password); 
+            localStorage.setItem('isRmb',this.rmb_psw); 
+            localStorage.setItem('username',this.username);
+          }, 
+          auto_login(){ // 自动登录的方法
+            this.auto_loginFlag = !this.auto_loginFlag;
+            localStorage.setItem('isAuto', this.auto_loginFlag);
+            if(localStorage.getItem('isAuto') == 'true'){
+              localStorage.setItem('password', this.password); 
+              localStorage.setItem('isRmb',true); 
+              localStorage.setItem('username',this.username); 
+            } 
+          }
+        }
+      })
+    </script>
+  </body>
+</html>
